@@ -1,9 +1,13 @@
-import { UserResolver } from './resolvers/user';
 import { ApolloServer } from 'apollo-server-express';
-import { buildSchema } from 'type-graphql';
+import connectRedis from 'connect-redis';
 import express from 'express';
+import session from 'express-session';
 import { MikroORM } from "@mikro-orm/core";
+import redis from 'redis';
 import 'reflect-metadata';
+import { buildSchema } from 'type-graphql';
+
+import { MyContext } from './types';
 
 // Config
 import microConfig from './mikro-orm.config';
@@ -11,19 +15,41 @@ import microConfig from './mikro-orm.config';
 // Resolvers
 import { HelloResolver } from './resolvers/hello';
 import { PostResolver } from './resolvers/post';
+import { UserResolver } from './resolvers/user';
 
 // Constants
-import { __prod__ } from "src/constants";
+import { __prod__ } from "./constants";
 
+// order matters with express middleware if one depends on the other the independent middleware
+// should be declared after the middleware it depends on
+// in this case our apolloServer will need the redis client so redis needs to be defined first
+// set request.credentials in /graphql settings from "omit" to "include"
 const main = async () => {
 	const app = express(); // initialize express app
+
+	const RedisStore = connectRedis(session);
+	const redisClient = redis.createClient();
+
+	app.use(session({
+		name: 'qid',
+		store: new RedisStore({ client: redisClient, disableTouch: true }),
+		cookie: {
+			maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
+			httpOnly: true, // can't access cookie on client side
+			sameSite: 'lax', // csrf
+			secure: __prod__ // cookie only works in https, set to prod
+		},
+		saveUninitialized: false, // don't allow saving empty data
+		secret: "lakjdflakjrlejkaldfldkmlcldkfjalefr",
+		resave: false
+	}));
 
 	const apolloServer = new ApolloServer({
 		schema: await buildSchema({
 			resolvers: [HelloResolver, PostResolver, UserResolver],
 			validate: false
 		}),
-		context: () => ({ em: orm.em }) // object available throughout app
+		context: ({ req, res }): MyContext => ({ em: orm.em, req, res }) // object available throughout app
 	})
 	const orm = await MikroORM.init(microConfig);
 	orm.getMigrator().up(); // run migrations
