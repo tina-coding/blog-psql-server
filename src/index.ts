@@ -18,7 +18,7 @@ import { PostResolver } from './resolvers/post';
 import { UserResolver } from './resolvers/user';
 
 // Constants
-import { __prod__ } from './constants';
+import { __prod__, COOKIE_NAME } from './constants';
 
 // order matters with express middleware if one depends on the other the independent middleware
 // should be declared after the middleware it depends on
@@ -39,7 +39,7 @@ const main = async () => {
 
   app.use(
     session({
-      name: 'qid',
+      name: COOKIE_NAME,
       store: new RedisStore({ client: redisClient, disableTouch: true }),
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
