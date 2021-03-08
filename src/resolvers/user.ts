@@ -1,3 +1,4 @@
+import { COOKIE_NAME } from './../constants';
 import argon2 from 'argon2';
 import {
   Arg,
@@ -133,5 +134,19 @@ export class UserResolver {
 		req.session.userId = user.id;
 
     return {user};
-  }
+	}
+
+	@Mutation(() => Boolean)
+	logout(@Ctx() { req, res }: MyContext) {
+		return new Promise(resolve => req.session.destroy((err) => {
+			if (err) {
+				console.error(err);
+				resolve(false);
+				return;
+			}
+
+			res.clearCookie(COOKIE_NAME); // remove cookie if successfully destroyed session
+			resolve(true);
+		}))
+	}
 }
