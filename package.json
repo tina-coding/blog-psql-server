@@ -7,6 +7,8 @@
     "watch": "tsc -w",
     "dev": "nodemon dist/index.js",
     "check:format": "prettier --list-different \"./**/*.{ts,tsx}\"",
+    "ci:lint": "eslint '*/**/*.{js,ts,tsx}'",
+    "ci:format": "prettier --check \"./**/*.{ts,tsx}\"",
     "format": "prettier --write \"./**/*.{ts,tsx}\"",
     "lint": "yarn format && eslint '*/**/*.{js,ts,tsx}' --quiet --fix",
     "migration:create": "mikro-orm migration:create",
