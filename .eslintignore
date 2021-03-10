@@ -1,0 +1,5 @@
+# Migrations
+/src/migrations
+
+# Dist files
+/dist
