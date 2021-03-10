@@ -1,24 +1,23 @@
-import { ApolloServer } from 'apollo-server-express';
-import connectRedis from 'connect-redis';
-import cors from 'cors';
-import express from 'express';
-import session from 'express-session';
-import { MikroORM } from '@mikro-orm/core';
-import redis from 'redis';
-import 'reflect-metadata';
-import { buildSchema } from 'type-graphql';
-
+import { ApolloServer } from "apollo-server-express";
+import connectRedis from "connect-redis";
+import cors from "cors";
+import express from "express";
+import session from "express-session";
+import { MikroORM } from "@mikro-orm/core";
+import redis from "redis";
+import "reflect-metadata";
+import { buildSchema } from "type-graphql";
 
 // Config
-import microConfig from './mikro-orm.config';
+import microConfig from "./mikro-orm.config";
 
 // Resolvers
-import { HelloResolver } from './resolvers/hello';
-import { PostResolver } from './resolvers/post';
-import { UserResolver } from './resolvers/user';
+import { HelloResolver } from "./resolvers/hello";
+import { PostResolver } from "./resolvers/post";
+import { UserResolver } from "./resolvers/user";
 
 // Constants
-import { __prod__, COOKIE_NAME } from './constants';
+import { __prod__, COOKIE_NAME } from "./constants";
 
 // order matters with express middleware if one depends on the other the independent middleware
 // should be declared after the middleware it depends on
@@ -30,12 +29,12 @@ const main = async () => {
   const RedisStore = connectRedis(session);
   const redisClient = redis.createClient();
 
-	app.use(
-		cors({
-			origin: 'http://localhost:3000',
-			credentials: true
-		})
-	);
+  app.use(
+    cors({
+      origin: "http://localhost:3000",
+      credentials: true
+    })
+  );
 
   app.use(
     session({
@@ -44,11 +43,11 @@ const main = async () => {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
         httpOnly: true, // can't access cookie on client side
-        sameSite: 'lax', // csrf
+        sameSite: "lax", // csrf
         secure: __prod__ // cookie only works in https, set to prod
       },
       saveUninitialized: false, // don't allow saving empty data
-      secret: 'lakjdflakjrlejkaldfldkmlcldkfjalefr',
+      secret: "lakjdflakjrlejkaldfldkmlcldkfjalefr",
       resave: false
     })
   );
@@ -65,10 +64,10 @@ const main = async () => {
 
   apolloServer.applyMiddleware({
     app,
-		cors: false
+    cors: false
   }); // creates graphql endpoint on express
 
-  app.listen(4000, () => console.log('Server listening on port 4000...'));
+  app.listen(4000, () => console.log("Server listening on port 4000..."));
 };
 
 main();
