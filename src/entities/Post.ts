@@ -19,4 +19,8 @@ export class Post {
 	@Field()
 	@Property({ type: 'text'})
 	title!: string;
+
+	@Field(() => String)
+	@Property({ type: 'text', default: ""})
+	description!: string;
 }
