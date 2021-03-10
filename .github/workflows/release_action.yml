@@ -1,0 +1,17 @@
+# This is a basic workflow to help you get started with Actions
+name: Tag/Release on Push Action
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-on-push:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: rymndhng/release-on-push-action@v0.16.0
+        with:
+          bump_version_scheme: minor
