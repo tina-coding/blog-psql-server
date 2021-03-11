@@ -31,7 +31,7 @@ class ChangePasswordInput {
   token: string;
   @Field()
   newPassword: string;
-  }
+}
 
 @ObjectType()
 class FieldError {
@@ -54,7 +54,7 @@ class UserResponse {
 export class UserResolver {
   @Mutation(() => UserResponse)
   async changePassword(
-    @Arg('options') options: ChangePasswordInput,
+    @Arg("options") options: ChangePasswordInput,
     @Ctx() { em, redis, req }: MyContext
   ): Promise<UserResponse> {
     const { newPassword, token } = options;
@@ -63,7 +63,7 @@ export class UserResolver {
       return {
         errors: [
           {
-            field: 'newPassword',
+            field: "newPassword",
             message: "password must have at least 8 characters"
           }
         ]
@@ -76,12 +76,11 @@ export class UserResolver {
       return {
         errors: [
           {
-            field: 'token',
+            field: "token",
             message: "token has expired"
           }
         ]
       };
-
     }
 
     const user = await em.findOne(User, { id: parseInt(userId) });
@@ -95,7 +94,6 @@ export class UserResolver {
           }
         ]
       };
-
     }
 
     user.password = await argon2.hash(newPassword);
@@ -104,12 +102,10 @@ export class UserResolver {
 
     req.session.userId = user.id; // login user after password reset
     return { user };
-    }
+  }
 
   @Mutation(() => Boolean)
-  async forgotPassword(
-    @Arg('email') email: string,
-    @Ctx() { em, redis }: MyContext) {
+  async forgotPassword(@Arg("email") email: string, @Ctx() { em, redis }: MyContext) {
     const user = await em.findOne(User, { email });
 
     if (!user) {
@@ -118,9 +114,9 @@ export class UserResolver {
 
     // send user a link to reset password
     const token = v4(); // create unique token
-    await redis.set(FORGOT_PASSWORD_PREFIX + token, user.id, 'ex', 1000 * 60 * 60 * 24); // 1 day to reset password
+    await redis.set(FORGOT_PASSWORD_PREFIX + token, user.id, "ex", 1000 * 60 * 60 * 24); // 1 day to reset password
     const resetLink = `<a href="http:localhost:3000/change-password/${token}">reset password</a>`;
-    await sendEmail(email, resetLink)
+    await sendEmail(email, resetLink);
 
     return true;
   }
@@ -142,8 +138,7 @@ export class UserResolver {
 
   @Mutation(() => UserResponse)
   async register(@Arg("options") options: RegisterInput, @Ctx() { em, req }: MyContext): Promise<UserResponse> {
-
-    if (!options.email.includes('@')) {
+    if (!options.email.includes("@")) {
       return {
         errors: [
           {
