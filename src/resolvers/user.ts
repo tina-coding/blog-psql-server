@@ -70,7 +70,8 @@ export class UserResolver {
       };
     }
 
-    const userId = await redis.get(FORGOT_PASSWORD_PREFIX + token);
+    const redisKey = FORGOT_PASSWORD_PREFIX + token;
+    const userId = await redis.get(redisKey);
 
     if (!userId) {
       return {
@@ -100,6 +101,7 @@ export class UserResolver {
 
     await em.persistAndFlush(user);
 
+    await redis.del(redisKey); // remove the token to prevent reuse
     req.session.userId = user.id; // login user after password reset
     return { user };
   }
