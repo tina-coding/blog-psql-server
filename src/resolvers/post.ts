@@ -1,8 +1,6 @@
-import { Arg, Ctx, Field, InputType, Mutation, Query, Resolver } from "type-graphql";
-
+import { Arg, Field, InputType, Mutation, Query, Resolver } from "type-graphql";
 import { Post } from "./../entities/Post";
 
-import { MyContext } from "./../types";
 
 @InputType()
 class UpdatePostInput {
@@ -33,8 +31,8 @@ export class PostResolver {
    * @returns Array of post objects
    */
   @Query(() => [Post])
-  posts(@Ctx() { em }: MyContext): Promise<Post[]> {
-    return em.find(Post, {});
+  posts(): Promise<Post[]> {
+    return Post.find();
   }
 
   /**
@@ -47,8 +45,8 @@ export class PostResolver {
   // nullable true says we can return null, in this case we can return either a Post or null
   // explicit typing: @Arg('id', () => Int) id: number
   @Query(() => Post, { nullable: true })
-  post(@Arg("id") id: number, @Ctx() { em }: MyContext): Promise<Post | null> {
-    return em.findOne(Post, { id });
+  post(@Arg("id") id: number): Promise<Post | undefined> {
+    return Post.findOne(id);
   }
 
   /**
@@ -57,40 +55,37 @@ export class PostResolver {
    * @returns Post object, the created post
    */
   @Mutation(() => Post)
-  async createPost(@Arg("options") options: CreatePostInput, @Ctx() { em }: MyContext): Promise<Post> {
+  async createPost(@Arg("options") options: CreatePostInput): Promise<Post> {
     const { title, description } = options;
 
     const body = description !== "" && description !== undefined ? { title, description } : { title };
 
-    const post = em.create(Post, body);
-    await em.persistAndFlush(post);
-
-    return post;
+    return Post.create(body).save();
   }
 
   @Mutation(() => Post, { nullable: true })
-  async updatePost(@Arg("options") options: UpdatePostInput, @Ctx() { em }: MyContext): Promise<Post | null> {
-    const post = await em.findOne(Post, { id: options.id }); // fetch the post
+  async updatePost(@Arg("options") options: UpdatePostInput): Promise<Post | null> {
+    const { id, title, description } = options;
+    const post = await Post.findOne(id); // fetch the post
     if (!post) {
       // if can't find post
       return null;
     }
 
     if (options.title && typeof options.title !== "undefined") {
-      post.title = options.title;
+      await Post.update({ id }, { title });
     }
 
     if (options.description && typeof options.description !== "undefined") {
-      post.description = options.description;
+      await Post.update({ id }, { description });
     }
 
-    await em.persistAndFlush(post);
     return post;
   }
 
   @Mutation(() => Boolean)
-  async deletePostById(@Arg("id") id: number, @Ctx() { em }: MyContext): Promise<boolean> {
-    await em.nativeDelete(Post, { id });
+  async deletePostById(@Arg("id") id: number): Promise<boolean> {
+    await Post.delete(id);
     return true;
   }
 }

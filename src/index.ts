@@ -3,30 +3,37 @@ import connectRedis from "connect-redis";
 import cors from "cors";
 import express from "express";
 import session from "express-session";
-import { MikroORM } from "@mikro-orm/core";
 import Redis from "ioredis";
 import "reflect-metadata";
 import { buildSchema } from "type-graphql";
-
+import { createConnection } from 'typeorm';
+// Constants
+import { COOKIE_NAME, __prod__ } from "./constants";
+import { Post } from './entities/Post';
+import { User } from './entities/User';
 // Config
-import microConfig from "./mikro-orm.config";
-
 // Resolvers
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
 
-// Constants
-import { __prod__, COOKIE_NAME } from "./constants";
-import { sendEmail } from "./utils/sendEmail";
+
+
 
 // order matters with express middleware if one depends on the other the independent middleware
 // should be declared after the middleware it depends on
 // in this case our apolloServer will need the redis client so redis needs to be defined first
 // set request.credentials in /graphql settings from "omit" to "include"
 const main = async () => {
-  const orm = await MikroORM.init(microConfig);
-  await orm.getMigrator().up(); // run migrations
+  const connection = createConnection({
+    type: 'postgres',
+    database: 'reddit-server-dev',
+    username: 'postgres',
+    password: 'postgres',
+    logging: true,
+    synchronize: true,
+    entities: [Post, User]
+  });
 
   const app = express(); // initialize express app
 
@@ -61,7 +68,7 @@ const main = async () => {
       resolvers: [HelloResolver, PostResolver, UserResolver],
       validate: false
     }),
-    context: ({ req, res }) => ({ em: orm.em, req, res, redis }) // object available throughout app
+    context: ({ req, res }) => ({ req, res, redis }) // object available throughout app
   });
 
   apolloServer.applyMiddleware({

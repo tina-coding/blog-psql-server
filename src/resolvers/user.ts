@@ -1,12 +1,12 @@
-import { COOKIE_NAME, FORGOT_PASSWORD_PREFIX } from "./../constants";
 import argon2 from "argon2";
 import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } from "type-graphql";
-
-import { User } from "./../entities/User";
-
-import { MyContext } from "./../types";
-import { sendEmail } from "../utils/sendEmail";
+import { getConnection } from 'typeorm';
 import { v4 } from "uuid";
+import { sendEmail } from "../utils/sendEmail";
+import { COOKIE_NAME, FORGOT_PASSWORD_PREFIX } from "./../constants";
+import { User } from "./../entities/User";
+import { MyContext } from "./../types";
+
 
 @InputType()
 class RegisterInput {
@@ -55,7 +55,7 @@ export class UserResolver {
   @Mutation(() => UserResponse)
   async changePassword(
     @Arg("options") options: ChangePasswordInput,
-    @Ctx() { em, redis, req }: MyContext
+    @Ctx() { redis, req }: MyContext
   ): Promise<UserResponse> {
     const { newPassword, token } = options;
 
@@ -84,7 +84,8 @@ export class UserResolver {
       };
     }
 
-    const user = await em.findOne(User, { id: parseInt(userId) });
+    const userIdInt = parseInt(userId);
+    const user = await User.findOne(userIdInt);
 
     if (!user) {
       return {
@@ -97,9 +98,8 @@ export class UserResolver {
       };
     }
 
-    user.password = await argon2.hash(newPassword);
 
-    await em.persistAndFlush(user);
+    User.update({ id: userIdInt }, { password: await argon2.hash(newPassword)})
 
     await redis.del(redisKey); // remove the token to prevent reuse
     req.session.userId = user.id; // login user after password reset
@@ -107,8 +107,8 @@ export class UserResolver {
   }
 
   @Mutation(() => Boolean)
-  async forgotPassword(@Arg("email") email: string, @Ctx() { em, redis }: MyContext) {
-    const user = await em.findOne(User, { email });
+  async forgotPassword(@Arg("email") email: string, @Ctx() {redis }: MyContext) {
+    const user = await User.findOne({ where: { email } });
 
     if (!user) {
       return true; //email not in db
@@ -124,22 +124,22 @@ export class UserResolver {
   }
 
   @Query(() => [User], { nullable: true })
-  async getUsers(@Ctx() { em }: MyContext) {
-    return await em.find(User, {});
+  async getUsers() {
+    return User.find();
   }
 
   @Query(() => User, { nullable: true })
-  async currentUser(@Ctx() { em, req }: MyContext) {
+  currentUser(@Ctx() { req }: MyContext) {
     // user not logged in
     if (!req.session.userId) {
       return null;
     }
 
-    return await em.findOne(User, { id: req.session.userId });
+    return User.findOne(req.session.userId);
   }
 
   @Mutation(() => UserResponse)
-  async register(@Arg("options") options: RegisterInput, @Ctx() { em, req }: MyContext): Promise<UserResponse> {
+  async register(@Arg("options") options: RegisterInput, @Ctx() { req }: MyContext): Promise<UserResponse> {
     if (!options.email.includes("@")) {
       return {
         errors: [
@@ -174,13 +174,13 @@ export class UserResolver {
     }
 
     const hashedPassword = await argon2.hash(options.password);
-    const user = em.create(User, {
-      username: options.username,
-      email: options.email,
-      password: hashedPassword
-    });
+    let user;
     try {
-      await em.persistAndFlush(user);
+     user = await User.create({
+        username: options.username,
+        email: options.email,
+        password: hashedPassword
+      }).save();
     } catch (error) {
       // duplicate username
       if (error.detail.includes("already exists") || error.code === "23505") {
@@ -197,15 +197,14 @@ export class UserResolver {
 
     // login user by setting the user id on the session
     // creates a cookie for the user and keeps them logged in
-    req.session.userId = user.id;
+    req.session.userId = user && user.id; // janky way to make typescript happy 🤧
 
     return { user };
   }
 
   @Mutation(() => UserResponse)
-  async login(@Arg("options") options: LoginInput, @Ctx() { em, req }: MyContext): Promise<UserResponse> {
-    const user = await em.findOne(User, { username: options.username }); // fetch user
-
+  async login(@Arg("options") options: LoginInput, @Ctx() { req }: MyContext): Promise<UserResponse> {
+    const user = await User.findOne({ where: { username: options.username } }); // fetch user
     if (!user) {
       return {
         errors: [
