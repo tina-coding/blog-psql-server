@@ -10,7 +10,7 @@
     "ci:lint": "eslint '*/**/*.{js,ts,tsx}'",
     "ci:format": "prettier --check \"./**/*.{ts,tsx}\"",
     "format": "prettier --write \"./**/*.{ts,tsx}\"",
-    "lint": "yarn format && eslint '*/**/*.{js,ts,tsx}' --quiet --fix",
+    "lint": "yarn format && eslint '*/**/*.{js,ts,tsx}' --fix",
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
