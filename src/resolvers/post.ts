@@ -1,6 +1,6 @@
 import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver, UseMiddleware } from "type-graphql";
 import { v4 } from "uuid";
-import { TMP_POST_PREFIX } from './../constants';
+import { TMP_POST_PREFIX } from "./../constants";
 import { Post } from "./../entities/Post";
 import { isAuth } from "./../middleware/isAuth";
 import { MyContext } from "./../types";
@@ -67,19 +67,13 @@ export class PostResolver {
   }
 
   @Query(() => CachedPost)
-  async cachedPost(
-    @Arg("key") key: string,
-    @Ctx() { redis }: MyContext
-  ): Promise<CachedPost>  {
+  async cachedPost(@Arg("key") key: string, @Ctx() { redis }: MyContext): Promise<CachedPost> {
     const title = await redis.lrange(TMP_POST_PREFIX + key, 0, 0);
 
     const description = await redis.lrange(TMP_POST_PREFIX + key, 1, 1);
 
-    const post = { title: title[0], description: description[0] }
-
-    return post;
+    return { title: title[0], description: description[0] };
   }
-
 
   @Mutation(() => Boolean)
   async clearPostCache(@Arg("key") key: string, @Ctx() { redis }: MyContext): Promise<boolean> {
@@ -87,16 +81,14 @@ export class PostResolver {
     return true;
   }
 
-
   @Mutation(() => String)
-  async cachePost(@Arg("options") options: CreatePostInput, @Ctx() { redis }: MyContext): Promise<String> {
+  async cachePost(@Arg("options") options: CreatePostInput, @Ctx() { redis }: MyContext): Promise<string> {
     const redisKey = v4();
     const { title, description } = options;
 
-    await redis.rpush(TMP_POST_PREFIX + redisKey, [title, description])
+    await redis.rpush(TMP_POST_PREFIX + redisKey, [title, description]);
 
-
-    return redisKey
+    return redisKey;
   }
 
   /**
