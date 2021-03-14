@@ -20,18 +20,21 @@ import { UserResolver } from "./resolvers/user";
 // Constants
 import { __prod__, COOKIE_NAME } from "./constants";
 
+import path from "path";
+
 // order matters with express middleware if one depends on the other the independent middleware
 // should be declared after the middleware it depends on
 // in this case our apolloServer will need the redis client so redis needs to be defined first
 // set request.credentials in /graphql settings from "omit" to "include"
 const main = async () => {
-  const connection = createConnection({
+  const connection = await createConnection({
     type: "postgres",
     database: "reddit-server-dev",
     username: "postgres",
     password: "postgres",
     logging: true,
     synchronize: true,
+    migrations: [path.join(__dirname, "./migrations/*")],
     entities: [Post, User]
   });
 

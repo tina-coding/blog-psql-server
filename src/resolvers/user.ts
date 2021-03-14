@@ -1,6 +1,5 @@
 import argon2 from "argon2";
-import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } from "type-graphql";
-import { getConnection } from "typeorm";
+import { Arg, Ctx, Field, FieldResolver, InputType, Mutation, ObjectType, Query, Resolver, Root } from "type-graphql";
 import { v4 } from "uuid";
 import { sendEmail } from "../utils/sendEmail";
 import { COOKIE_NAME, FORGOT_PASSWORD_PREFIX } from "./../constants";
@@ -49,8 +48,16 @@ class UserResponse {
   user?: User;
 }
 
-@Resolver()
+@Resolver(User)
 export class UserResolver {
+  @FieldResolver(() => String)
+  userEmail(@Root() user: User, @Ctx() { req }: MyContext): string {
+    if (req.session.userId === user.id) {
+      //return email only if current user is
+      return user.email;
+    }
+    return ""; // if current user is not the same as the user they should not see email data
+  }
   @Mutation(() => UserResponse)
   async changePassword(
     @Arg("options") options: ChangePasswordInput,
@@ -105,7 +112,7 @@ export class UserResolver {
   }
 
   @Mutation(() => Boolean)
-  async forgotPassword(@Arg("email") email: string, @Ctx() { redis }: MyContext) {
+  async forgotPassword(@Arg("email") email: string, @Ctx() { redis }: MyContext): Promise<boolean> {
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
@@ -122,12 +129,12 @@ export class UserResolver {
   }
 
   @Query(() => [User], { nullable: true })
-  async getUsers() {
+  async getUsers(): Promise<User[]> {
     return User.find();
   }
 
   @Query(() => User, { nullable: true })
-  currentUser(@Ctx() { req }: MyContext) {
+  async currentUser(@Ctx() { req }: MyContext): Promise<User | undefined | null> {
     // user not logged in
     if (!req.session.userId) {
       return null;
@@ -233,7 +240,7 @@ export class UserResolver {
   }
 
   @Mutation(() => Boolean)
-  logout(@Ctx() { req, res }: MyContext) {
+  logout(@Ctx() { req, res }: MyContext): Promise<boolean> {
     return new Promise((resolve) =>
       req.session.destroy((err) => {
         if (err) {

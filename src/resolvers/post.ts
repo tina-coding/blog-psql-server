@@ -1,4 +1,19 @@
-import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver, UseMiddleware } from "type-graphql";
+import { getConnection } from "typeorm";
+import {
+  Arg,
+  Ctx,
+  Field,
+  FieldResolver,
+  InputType,
+  Int,
+  Mutation,
+  ObjectType,
+  Query,
+  Resolver,
+  Root,
+  UseMiddleware
+} from "type-graphql";
+import { Min, Max } from "class-validator";
 import { v4 } from "uuid";
 import { TMP_POST_PREFIX } from "./../constants";
 import { Post } from "./../entities/Post";
@@ -13,6 +28,18 @@ class CachedPost {
   @Field()
   description: string;
 }
+
+@InputType()
+class PostPaginateInput {
+  @Field(() => Int)
+  @Min(1)
+  @Max(30)
+  limit: number;
+
+  @Field(() => String, { nullable: true })
+  cursor: string | null;
+}
+
 @InputType()
 class UpdatePostInput {
   @Field()
@@ -40,16 +67,56 @@ class DeletePostsInput {
   ids: number[];
 }
 
-@Resolver()
+@ObjectType()
+class PostPagination {
+  @Field(() => [Post])
+  posts: Post[];
+
+  @Field(() => Int)
+  total: number;
+}
+@Resolver(Post)
 export class PostResolver {
+  @FieldResolver(() => String)
+  postDescSnippet(@Root() root: Post): string {
+    // called every time we get a Post object
+    return root.description.slice(0, 100);
+  }
+
   /**
    * Posts: Lists all posts
    * @param no params
    * @returns Array of post objects
    */
-  @Query(() => [Post])
-  posts(): Promise<Post[]> {
-    return Post.find();
+  @Query(() => PostPagination)
+  async posts(@Arg("options") options: PostPaginateInput): Promise<PostPagination> {
+    const limitCap = Math.min(options.limit, 30);
+
+    const parameters: unknown[] = [limitCap];
+
+    if (options.cursor) {
+      parameters.push(new Date(parseInt(options.cursor)));
+    }
+    /*eslint quotes: ["off", "double"]*/
+    /*eslint-env es6*/
+    const posts = await getConnection().query(
+      `
+      SELECT p.*,
+      json_build_object(
+        'id', u.id,
+        'username', u.username,
+        'email', u.email
+      ) author
+      FROM post p
+      INNER JOIN public.user u on u.id = p."authorId"
+      ${options.cursor ? 'WHERE p."createdAt" < $2' : ""}
+      ORDER BY p."createdAt" DESC
+      LIMIT $1
+    `,
+      parameters
+    );
+
+    return { posts, total: posts.length };
   }
 
   /**
