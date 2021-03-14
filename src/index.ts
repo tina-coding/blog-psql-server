@@ -6,19 +6,16 @@ import session from "express-session";
 import Redis from "ioredis";
 import "reflect-metadata";
 import { buildSchema } from "type-graphql";
-import { createConnection } from 'typeorm';
+import { createConnection } from "typeorm";
 // Constants
 import { COOKIE_NAME, __prod__ } from "./constants";
-import { Post } from './entities/Post';
-import { User } from './entities/User';
+import { Post } from "./entities/Post";
+import { User } from "./entities/User";
 // Config
 // Resolvers
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
-
-
-
 
 // order matters with express middleware if one depends on the other the independent middleware
 // should be declared after the middleware it depends on
@@ -26,10 +23,10 @@ import { UserResolver } from "./resolvers/user";
 // set request.credentials in /graphql settings from "omit" to "include"
 const main = async () => {
   const connection = createConnection({
-    type: 'postgres',
-    database: 'reddit-server-dev',
-    username: 'postgres',
-    password: 'postgres',
+    type: "postgres",
+    database: "reddit-server-dev",
+    username: "postgres",
+    password: "postgres",
     logging: true,
     synchronize: true,
     entities: [Post, User]

@@ -1,12 +1,11 @@
 import argon2 from "argon2";
 import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } from "type-graphql";
-import { getConnection } from 'typeorm';
+import { getConnection } from "typeorm";
 import { v4 } from "uuid";
 import { sendEmail } from "../utils/sendEmail";
 import { COOKIE_NAME, FORGOT_PASSWORD_PREFIX } from "./../constants";
 import { User } from "./../entities/User";
 import { MyContext } from "./../types";
-
 
 @InputType()
 class RegisterInput {
@@ -98,8 +97,7 @@ export class UserResolver {
       };
     }
 
-
-    User.update({ id: userIdInt }, { password: await argon2.hash(newPassword)})
+    User.update({ id: userIdInt }, { password: await argon2.hash(newPassword) });
 
     await redis.del(redisKey); // remove the token to prevent reuse
     req.session.userId = user.id; // login user after password reset
@@ -107,7 +105,7 @@ export class UserResolver {
   }
 
   @Mutation(() => Boolean)
-  async forgotPassword(@Arg("email") email: string, @Ctx() {redis }: MyContext) {
+  async forgotPassword(@Arg("email") email: string, @Ctx() { redis }: MyContext) {
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
@@ -176,7 +174,7 @@ export class UserResolver {
     const hashedPassword = await argon2.hash(options.password);
     let user;
     try {
-     user = await User.create({
+      user = await User.create({
         username: options.username,
         email: options.email,
         password: hashedPassword

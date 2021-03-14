@@ -1,7 +1,6 @@
 import { Arg, Field, InputType, Mutation, Query, Resolver } from "type-graphql";
 import { Post } from "./../entities/Post";
 
-
 @InputType()
 class UpdatePostInput {
   @Field()
