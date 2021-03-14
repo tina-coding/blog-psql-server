@@ -4,7 +4,7 @@ import cors from "cors";
 import express from "express";
 import session from "express-session";
 import { MikroORM } from "@mikro-orm/core";
-import redis from "redis";
+import Redis from "ioredis";
 import "reflect-metadata";
 import { buildSchema } from "type-graphql";
 
@@ -18,16 +18,20 @@ import { UserResolver } from "./resolvers/user";
 
 // Constants
 import { __prod__, COOKIE_NAME } from "./constants";
+import { sendEmail } from "./utils/sendEmail";
 
 // order matters with express middleware if one depends on the other the independent middleware
 // should be declared after the middleware it depends on
 // in this case our apolloServer will need the redis client so redis needs to be defined first
 // set request.credentials in /graphql settings from "omit" to "include"
 const main = async () => {
+  const orm = await MikroORM.init(microConfig);
+  await orm.getMigrator().up(); // run migrations
+
   const app = express(); // initialize express app
 
   const RedisStore = connectRedis(session);
-  const redisClient = redis.createClient();
+  const redis = new Redis();
 
   app.use(
     cors({
@@ -39,7 +43,7 @@ const main = async () => {
   app.use(
     session({
       name: COOKIE_NAME,
-      store: new RedisStore({ client: redisClient, disableTouch: true }),
+      store: new RedisStore({ client: redis, disableTouch: true }),
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
         httpOnly: true, // can't access cookie on client side
@@ -57,10 +61,8 @@ const main = async () => {
       resolvers: [HelloResolver, PostResolver, UserResolver],
       validate: false
     }),
-    context: ({ req, res }) => ({ em: orm.em, req, res }) // object available throughout app
+    context: ({ req, res }) => ({ em: orm.em, req, res, redis }) // object available throughout app
   });
-  const orm = await MikroORM.init(microConfig);
-  orm.getMigrator().up(); // run migrations
 
   apolloServer.applyMiddleware({
     app,
