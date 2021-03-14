@@ -7,15 +7,18 @@ import Redis from "ioredis";
 import "reflect-metadata";
 import { buildSchema } from "type-graphql";
 import { createConnection } from "typeorm";
-// Constants
-import { COOKIE_NAME, __prod__ } from "./constants";
+
+// Entities
 import { Post } from "./entities/Post";
 import { User } from "./entities/User";
-// Config
+
 // Resolvers
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
+
+// Constants
+import { __prod__, COOKIE_NAME } from "./constants";
 
 // order matters with express middleware if one depends on the other the independent middleware
 // should be declared after the middleware it depends on
