@@ -1,6 +1,5 @@
 import argon2 from "argon2";
-import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } from "type-graphql";
-import { getConnection } from "typeorm";
+import { Arg, Ctx, Field, FieldResolver, InputType, Mutation, ObjectType, Query, Resolver, Root } from "type-graphql";
 import { v4 } from "uuid";
 import { sendEmail } from "../utils/sendEmail";
 import { COOKIE_NAME, FORGOT_PASSWORD_PREFIX } from "./../constants";
@@ -49,8 +48,16 @@ class UserResponse {
   user?: User;
 }
 
-@Resolver()
+@Resolver(User)
 export class UserResolver {
+  @FieldResolver(() => String)
+  userEmail(@Root() user: User, @Ctx() { req }: MyContext) {
+    if (req.session.userId === user.id) {
+      //return email only if current user is
+      return user.email;
+    }
+    return ''; // if current user is not the same as the user they should not see email data
+  }
   @Mutation(() => UserResponse)
   async changePassword(
     @Arg("options") options: ChangePasswordInput,
