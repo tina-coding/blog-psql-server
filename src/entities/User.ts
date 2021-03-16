@@ -1,3 +1,4 @@
+import { Clap } from "./Clap";
 import { Field, Int, ObjectType } from "type-graphql";
 import {
   BaseEntity,
@@ -18,6 +19,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Post, (post) => post.author)
   posts: Post[];
+
+  @OneToMany(() => Clap, (clap) => clap.user)
+  claps: Clap[];
 
   @Field(() => String)
   @CreateDateColumn()
