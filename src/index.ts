@@ -1,6 +1,7 @@
 import { ApolloServer } from "apollo-server-express";
 import connectRedis from "connect-redis";
 import cors from "cors";
+import "dotenv-safe/config";
 import express from "express";
 import session from "express-session";
 import Redis from "ioredis";
@@ -28,25 +29,27 @@ import { UserResolver } from "./resolvers/user";
 // in this case our apolloServer will need the redis client so redis needs to be defined first
 // set request.credentials in /graphql settings from "omit" to "include"
 const main = async () => {
-  await createConnection({
+  const connection = await createConnection({
     type: "postgres",
-    database: "reddit-server-dev",
-    username: "postgres",
-    password: "postgres",
+    url: process.env.DATABASE_URL,
     logging: true,
-    synchronize: true,
+    // synchronize: true,
     migrations: [path.join(__dirname, "./migrations/*")],
     entities: [Post, User, Clap]
   });
 
+  await connection.runMigrations();
+
   const app = express(); // initialize express app
 
+  app.set("proxy", 1);
+
   const RedisStore = connectRedis(session);
-  const redis = new Redis();
+  const redis = new Redis(process.env.REDIS_URL);
 
   app.use(
     cors({
-      origin: "http://localhost:3000",
+      origin: process.env.CORS_ORIGIN,
       credentials: true
     })
   );
@@ -59,10 +62,11 @@ const main = async () => {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
         httpOnly: true, // can't access cookie on client side
         sameSite: "lax", // csrf
-        secure: __prod__ // cookie only works in https, set to prod
+        secure: __prod__, // cookie only works in https, set to prod
+        domain: __prod__ ? ".codeimposter.wtf" : undefined
       },
       saveUninitialized: false, // don't allow saving empty data
-      secret: "lakjdflakjrlejkaldfldkmlcldkfjalefr",
+      secret: process.env.SECRET,
       resave: false
     })
   );
@@ -80,7 +84,9 @@ const main = async () => {
     cors: false
   }); // creates graphql endpoint on express
 
-  app.listen(4000, () => console.log("Server listening on port 4000..."));
+  app.listen(parseInt(process.env.PORT), () =>
+    console.log(`Server listening on port ${parseInt(process.env.PORT)} ...`)
+  );
 };
 
 main();

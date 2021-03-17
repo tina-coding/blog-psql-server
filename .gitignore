@@ -6,3 +6,6 @@ node_modules/
 
 # Watch Dist Files
 dist/
+
+# Ignore env file
+.env
