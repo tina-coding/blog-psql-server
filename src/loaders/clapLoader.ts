@@ -1,7 +1,18 @@
 import { Clap } from "./../entities/Clap";
 import DataLoader from "dataloader";
-export const createClapLoader = () =>
+export const createClapLoader = (): DataLoader<
+  {
+    postId: number;
+    userId: number;
+  },
+  Clap | null,
+  {
+    postId: number;
+    userId: number;
+  }
+> =>
   new DataLoader<{ postId: number; userId: number }, Clap | null>(async (keys) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const claps = await Clap.findByIds(keys as any);
 
     const clapsToObj: Record<string, Clap> = claps.reduce(

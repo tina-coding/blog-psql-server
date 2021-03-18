@@ -105,7 +105,7 @@ export class PostResolver {
    * @returns Array of post objects
    */
   @Query(() => PostPagination)
-  async posts(@Arg("options") options: PostPaginateInput, @Ctx() { req }: MyContext): Promise<PostPagination> {
+  async posts(@Arg("options") options: PostPaginateInput): Promise<PostPagination> {
     const limitCap = Math.min(options.limit, 30);
 
     const parameters: unknown[] = [limitCap];
