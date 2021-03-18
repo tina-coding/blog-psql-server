@@ -1,3 +1,4 @@
+import { User } from "./../entities/User";
 import { getConnection } from "typeorm";
 import {
   Arg,
@@ -42,14 +43,14 @@ class PostPaginateInput {
 
 @InputType()
 class UpdatePostInput {
-  @Field()
+  @Field(() => Int)
   id: number;
 
   @Field()
-  title?: string;
+  title: string;
 
   @Field()
-  description?: string;
+  description: string;
 }
 
 @InputType()
@@ -83,20 +84,31 @@ export class PostResolver {
     return root.description.slice(0, 100);
   }
 
+  @FieldResolver(() => User)
+  async author(@Root() root: Post, @Ctx() { userLoader }: MyContext): Promise<User | undefined> {
+    return userLoader.load(root.authorId);
+  }
+
+  @FieldResolver(() => Int, { nullable: true })
+  async hasVoted(@Root() root: Post, @Ctx() { clapLoader, req }: MyContext): Promise<number | null> {
+    if (!req.session.userId) {
+      return null;
+    }
+
+    const clap = await clapLoader.load({ postId: root.id, userId: req.session.userId });
+
+    return clap ? clap.value : null;
+  }
   /**
    * Posts: Lists all posts
    * @param no params
    * @returns Array of post objects
    */
   @Query(() => PostPagination)
-  async posts(@Arg("options") options: PostPaginateInput, @Ctx() { req }: MyContext): Promise<PostPagination> {
+  async posts(@Arg("options") options: PostPaginateInput): Promise<PostPagination> {
     const limitCap = Math.min(options.limit, 30);
 
     const parameters: unknown[] = [limitCap];
-
-    if (req.session.userId) {
-      parameters.push(req.session.userId);
-    }
 
     if (options.cursor) {
       parameters.push(new Date(parseInt(options.cursor)));
@@ -105,19 +117,8 @@ export class PostResolver {
     /*eslint-env es6*/
     const posts = await getConnection().query(
       `
-      SELECT p.*,
-      json_build_object(
-        'id', u.id,
-        'username', u.username,
-        'email', u.email
-      ) author,
-      ${
-        req.session.userId
-          ? '(SELECT value FROM clap WHERE "postId"=p.id and "userId"=$2) "hasVoted"'
-          : "null as hasVoted"
-      }
+      SELECT p.*
       FROM post p
-      INNER JOIN public.user u on u.id = p."authorId"
       ${options.cursor ? 'WHERE p."createdAt" < $2' : ""}
       ORDER BY p."createdAt" DESC
       LIMIT $1
@@ -138,7 +139,7 @@ export class PostResolver {
   // nullable true says we can return null, in this case we can return either a Post or null
   // explicit typing: @Arg('id', () => Int) id: number
   @Query(() => Post, { nullable: true })
-  post(@Arg("id") id: number): Promise<Post | undefined> {
+  post(@Arg("id", () => Int) id: number): Promise<Post | undefined> {
     return Post.findOne(id);
   }
 
@@ -183,32 +184,30 @@ export class PostResolver {
   }
 
   @Mutation(() => Post, { nullable: true })
-  async updatePost(@Arg("options") options: UpdatePostInput): Promise<Post | null> {
+  @UseMiddleware(isAuth)
+  async updatePost(@Arg("options") options: UpdatePostInput, @Ctx() { req }: MyContext): Promise<Post | null> {
     const { id, title, description } = options;
-    const post = await Post.findOne(id); // fetch the post
-    if (!post) {
-      // if can't find post
-      return null;
-    }
 
-    if (options.title && typeof options.title !== "undefined") {
-      await Post.update({ id }, { title });
-    }
+    const result = await getConnection()
+      .createQueryBuilder()
+      .update(Post)
+      .set({ title, description })
+      .where('id = :id and "authorId" = :authorId', { id, authorId: req.session.userId })
+      .returning("*")
+      .execute();
 
-    if (options.description && typeof options.description !== "undefined") {
-      await Post.update({ id }, { description });
-    }
-
-    return post;
+    return result.raw[0]; // return null if the current user does not own post and updated post if the user does own it
   }
 
   @Mutation(() => Boolean)
-  async deletePostById(@Arg("id") id: number): Promise<boolean> {
-    await Post.delete(id);
+  @UseMiddleware(isAuth)
+  async deletePostById(@Arg("id", () => Int) id: number, @Ctx() { req }: MyContext): Promise<boolean> {
+    await Post.delete({ id, authorId: req.session.userId });
     return true;
   }
 
   @Mutation(() => Boolean)
+  @UseMiddleware(isAuth)
   async deletePosts(@Arg("options") options: DeletePostsInput): Promise<boolean> {
     await Post.delete(options.ids);
     return true;
