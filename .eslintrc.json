@@ -17,6 +17,8 @@
   "plugins": ["@typescript-eslint", "prettier", "sonarjs"],
   "rules": {
     "linebreak-style": ["error", "unix"],
+    "no-unused-vars": ["error", { "varsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-unused-vars": ["error", { "varsIgnorePattern": "^_" }],
     "quotes": ["error", "double"],
     "semi": ["error", "always"],
     "@typescript-eslint/no-var-requires": "off"

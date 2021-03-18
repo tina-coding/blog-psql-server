@@ -7,8 +7,11 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   ManyToOne,
-  UpdateDateColumn
+  UpdateDateColumn,
+  OneToMany
 } from "typeorm";
+import { Clap } from "./Clap";
+import { MinLength } from "class-validator";
 
 @ObjectType()
 @Entity()
@@ -25,6 +28,12 @@ export class Post extends BaseEntity {
   @ManyToOne(() => User, (user) => user.posts)
   author: User;
 
+  @OneToMany(() => Clap, (clap) => clap.user)
+  claps: Clap[];
+
+  @Field(() => Int, { nullable: true })
+  hasVoted: number | null;
+
   @Field(() => String)
   @CreateDateColumn()
   createdAt: Date;
@@ -34,14 +43,16 @@ export class Post extends BaseEntity {
   updatedAt: Date;
 
   @Field()
+  @MinLength(3, { message: "Title is too short" })
   @Column()
   title!: string;
 
   @Field(() => String)
-  @Column({ default: "" })
+  @MinLength(3, { message: "Title is too short" })
+  @Column()
   description!: string;
 
-  @Field()
+  @Field(() => Int)
   @Column({ type: "int", default: 0 })
-  claps!: number;
+  votes!: number;
 }

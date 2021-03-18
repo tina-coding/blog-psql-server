@@ -89,10 +89,14 @@ export class PostResolver {
    * @returns Array of post objects
    */
   @Query(() => PostPagination)
-  async posts(@Arg("options") options: PostPaginateInput): Promise<PostPagination> {
+  async posts(@Arg("options") options: PostPaginateInput, @Ctx() { req }: MyContext): Promise<PostPagination> {
     const limitCap = Math.min(options.limit, 30);
 
     const parameters: unknown[] = [limitCap];
+
+    if (req.session.userId) {
+      parameters.push(req.session.userId);
+    }
 
     if (options.cursor) {
       parameters.push(new Date(parseInt(options.cursor)));
@@ -106,7 +110,12 @@ export class PostResolver {
         'id', u.id,
         'username', u.username,
         'email', u.email
-      ) author
+      ) author,
+      ${
+        req.session.userId
+          ? '(SELECT value FROM clap WHERE "postId"=p.id and "userId"=$2) "hasVoted"'
+          : "null as hasVoted"
+      }
       FROM post p
       INNER JOIN public.user u on u.id = p."authorId"
       ${options.cursor ? 'WHERE p."createdAt" < $2' : ""}

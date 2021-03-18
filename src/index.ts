@@ -9,10 +9,12 @@ import { buildSchema } from "type-graphql";
 import { createConnection } from "typeorm";
 
 // Entities
+import { Clap } from "./entities/Clap";
 import { Post } from "./entities/Post";
 import { User } from "./entities/User";
 
 // Resolvers
+import { ClapResolver } from "./resolvers/clap";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
@@ -27,7 +29,7 @@ import path from "path";
 // in this case our apolloServer will need the redis client so redis needs to be defined first
 // set request.credentials in /graphql settings from "omit" to "include"
 const main = async () => {
-  const connection = await createConnection({
+  await createConnection({
     type: "postgres",
     database: "reddit-server-dev",
     username: "postgres",
@@ -35,7 +37,7 @@ const main = async () => {
     logging: true,
     synchronize: true,
     migrations: [path.join(__dirname, "./migrations/*")],
-    entities: [Post, User]
+    entities: [Post, User, Clap]
   });
 
   const app = express(); // initialize express app
@@ -68,7 +70,7 @@ const main = async () => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [HelloResolver, PostResolver, UserResolver],
+      resolvers: [ClapResolver, HelloResolver, PostResolver, UserResolver],
       validate: false
     }),
     context: ({ req, res }) => ({ req, res, redis }) // object available throughout app
